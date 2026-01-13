@@ -1,0 +1,7 @@
+/vendor/
+/uploads/*
+!/uploads/.gitkeep
+/temp/*
+!/temp/.gitkeep
+.DS_Store
+*.log
