@@ -67,43 +67,58 @@ try {
         $barcodeFile = $tempDir . '/barcode_' . $index . '.png';
         @file_put_contents($barcodeFile, $barcodeData);
         
-        // TCPDF ile PDF oluştur (60mm x 40mm etiket boyutu)
-        $pdf = new TCPDF('L', 'mm', array(60, 40), true, 'UTF-8', false);
+        // TCPDF ile PDF oluştur (100mm x 100mm = 10cm x 10cm kare etiket)
+        $pdf = new TCPDF('P', 'mm', array(100, 100), true, 'UTF-8', false);
         $pdf->SetCreator('Barkod Oluşturucu');
         $pdf->SetTitle($productName);
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(false);
-        $pdf->SetMargins(2, 2, 2);
+        $pdf->SetMargins(5, 5, 5);
         $pdf->SetAutoPageBreak(false, 0);
         $pdf->AddPage();
         
-        // Sayfa genişliği
-        $pageWidth = 60;
+        // Sayfa boyutları
+        $pageWidth = 100;
+        $pageHeight = 100;
         
-        // Ürün adı - üstte ortalı, uzun isimler için otomatik küçült
-        $fontSize = 9;
+        // İçerik yükseklikleri hesapla (ortalamak için)
+        $contentHeight = 55; // Yaklaşık içerik yüksekliği
+        $startY = ($pageHeight - $contentHeight) / 2; // Dikey ortala
+        
+        // Ürün adı - üstte ortalı, uzun isimler için otomatik küçült veya çok satıra böl
+        $fontSize = 12;
         $pdf->SetFont('dejavusans', 'B', $fontSize);
         $textWidth = $pdf->GetStringWidth($productName);
+        $maxWidth = $pageWidth - 10;
         
         // Eğer metin sığmıyorsa font boyutunu küçült
-        while ($textWidth > ($pageWidth - 4) && $fontSize > 5) {
+        while ($textWidth > $maxWidth && $fontSize > 7) {
             $fontSize -= 0.5;
             $pdf->SetFont('dejavusans', 'B', $fontSize);
             $textWidth = $pdf->GetStringWidth($productName);
         }
         
-        $pdf->SetXY(2, 3);
-        $pdf->Cell($pageWidth - 4, 5, $productName, 0, 1, 'C');
+        // Hala sığmıyorsa MultiCell ile çok satıra böl
+        $pdf->SetXY(5, $startY);
+        if ($textWidth > $maxWidth) {
+            $pdf->MultiCell($maxWidth, 5, $productName, 0, 'C', false, 1, 5, $startY);
+            $nameEndY = $pdf->GetY();
+        } else {
+            $pdf->Cell($maxWidth, 6, $productName, 0, 1, 'C');
+            $nameEndY = $startY + 8;
+        }
         
-        // Barkod görsel - ortalı
-        $barcodeWidth = 50;
+        // Barkod görsel - ortalı (ürün adı uzunluğuna göre pozisyon ayarla)
+        $barcodeWidth = 70;
+        $barcodeHeight = 25;
         $barcodeX = ($pageWidth - $barcodeWidth) / 2;
-        @$pdf->Image($barcodeFile, $barcodeX, 10, $barcodeWidth, 18, 'PNG');
+        $barcodeY = $nameEndY + 3;
+        @$pdf->Image($barcodeFile, $barcodeX, $barcodeY, $barcodeWidth, $barcodeHeight, 'PNG');
         
         // Barkod numarası - altta ortalı
-        $pdf->SetFont('dejavusans', '', 8);
-        $pdf->SetXY(0, 29);
-        $pdf->Cell($pageWidth, 5, $barcodeValue, 0, 1, 'C');
+        $pdf->SetFont('dejavusans', '', 11);
+        $pdf->SetXY(0, $barcodeY + $barcodeHeight + 3);
+        $pdf->Cell($pageWidth, 6, $barcodeValue, 0, 1, 'C');
         
         // Dosya adını düzelt - sonda _ olmasın
         $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $productName);
